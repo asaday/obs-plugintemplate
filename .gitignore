@@ -15,6 +15,7 @@
 !CMakePresets.json
 !LICENSE
 !README.md
+!N-Air_suppriment.md
 
 # Exclude lock files
 *.lock.json
