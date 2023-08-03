@@ -31,10 +31,10 @@ static void *comment_thread(void *pdata)
 	data.speakers = SPEAKERS_MONO;
 	data.samples_per_sec = rate;      //44100;
 	data.timestamp = ts;
-	data.format = AUDIO_FORMAT_32BIT; // AUDIO_FORMAT_16BIT;
+	data.format = AUDIO_FORMAT_16BIT;
 
 	HANDLE hPipe = NULL;
-	DWORD len = rate * 4; //44100;
+	DWORD len = rate / 2; //44100;
 	char *buffer = bzalloc(len);
 	DWORD dwRead;
 
@@ -46,7 +46,7 @@ static void *comment_thread(void *pdata)
 				L"\\\\.\\pipe\\MyNamedPipe", PIPE_ACCESS_DUPLEX,
 				PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE |
 					PIPE_NOWAIT,
-				PIPE_UNLIMITED_INSTANCES, 1024, len * 128, 0,
+				PIPE_UNLIMITED_INSTANCES, 1024, len * 8, 0,
 				NULL);
 
 			if (hPipe == INVALID_HANDLE_VALUE) {
@@ -80,7 +80,7 @@ static void *comment_thread(void *pdata)
 			}
 
 			data.data[0] = buffer;
-			uint32_t frames = dwRead / 4; /// 2;
+			uint32_t frames = dwRead / 2; /// 2;
 			data.frames = frames;
 			data.timestamp = ts;
 			obs_source_output_audio(swd->source, &data);
