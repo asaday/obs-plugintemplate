@@ -11,7 +11,7 @@ include(defaults)
 include(helpers)
 
 
-add_library(${CMAKE_PROJECT_NAME} MODULE src/gain-filter.c src/sinwave.c src/comment.c)
+add_library(${CMAKE_PROJECT_NAME} MODULE src/comment.c)
 
 find_package(libobs REQUIRED)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)

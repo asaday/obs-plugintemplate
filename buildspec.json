@@ -44,7 +44,7 @@
             "bundleId": "com.example.obs-plugintemplate"
         }
     },
-    "name": "obs-comment",
+    "name": "comment_audio",
     "version": "1.0.0",
     "author": "Your Name Here",
     "website": "https://example.com",

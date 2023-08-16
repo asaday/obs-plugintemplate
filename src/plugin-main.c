@@ -22,18 +22,14 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
-extern const struct obs_source_info gain_filter;
-extern const struct obs_source_info test_sinewave;
-extern const struct obs_source_info test_comment;
+extern const struct obs_source_info comment_audio;
 
 bool obs_module_load(void)
 {
 	obs_log(LOG_INFO, "plugin loaded successfully (version %s)",
 		PLUGIN_VERSION);
 
-	obs_register_source(&gain_filter);
-	obs_register_source(&test_sinewave);
-	obs_register_source(&test_comment);
+	obs_register_source(&comment_audio);
 
 	return true;
 }
