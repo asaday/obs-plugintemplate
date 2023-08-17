@@ -64,7 +64,6 @@ static void *comment_thread(void *pdata)
 	struct comment_data *ctx = pdata;
 	HANDLE hPipe = NULL;
 	DWORD bufSize = 1024 * 1024;
-	char *buffer = bzalloc(bufSize);
 	DWORD dwRead;
 
 	while (os_event_try(ctx->event) == EAGAIN) {
@@ -95,17 +94,17 @@ static void *comment_thread(void *pdata)
 
 		blog(LOG_INFO, "comment_audio open pipe");
 
-		uint8_t *b = NULL;
+		struct Header header;
+		uint8_t *buf = NULL;
 		uint32_t pos = 0;
 		uint32_t size = 0;
 
 		while (os_event_try(ctx->event) == EAGAIN) {
 			os_sleep_ms(10);
-			DWORD len = b ? min(bufSize, size - pos)
-				      : sizeof(struct Header);
-
+			DWORD len = pos ? size - pos : sizeof(header);
+			uint8_t *p = pos ? buf + pos : (uint8_t*)&header;
 			dwRead = 0;
-			ReadFile(hPipe, buffer, len, &dwRead, NULL);
+			ReadFile(hPipe, p, len, &dwRead, NULL);
 			DWORD ret = GetLastError();
 			if (ret == ERROR_NO_DATA || ret == ERROR_IO_PENDING)
 				continue;
@@ -120,38 +119,37 @@ static void *comment_thread(void *pdata)
 				break;
 			}
 
-			if (!b) {
-				struct Header *h = (void *)buffer;
-				if (h->magic != 0x2525 || h->bitRate != 16) {
+			if (!pos) {
+				if (header.magic != 0x2525 ||
+				    header.bitRate != 16) {
 					blog(LOG_INFO,
 					     "comment_audio wrong header");
 					continue;
 				}
-				size = h->dataLength + h->headerLength;
-				b = bzalloc(size);
-				memcpy(b, buffer, dwRead);
+				size = header.dataLength + header.headerLength;
+				buf = bzalloc(size);
+				memcpy(buf, &header, dwRead);
 				pos = dwRead;
 				continue;
 			}
 
-			memcpy(b + pos, buffer, dwRead);
 			pos += dwRead;
 			if (pos < size)
 				continue;
 
-			doPLay(ctx, b);
-			bfree(b);
-			b = NULL;
+			doPLay(ctx, buf);
+			bfree(buf);
+			buf = NULL;
 			pos = size = 0;
+			header.magic = 0;
 		}
-		if (b)
-			bfree(b);
+
+		if (buf)
+			bfree(buf);
 	}
 
 	if (hPipe)
 		CloseHandle(hPipe);
-
-	bfree(buffer);
 
 	return NULL;
 }

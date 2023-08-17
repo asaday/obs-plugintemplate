@@ -4,19 +4,33 @@ const WaveFile = require("wavefile");
 
 const sleep = (msec) => new Promise((resolve) => setTimeout(resolve, msec));
 
-const pipe = "\\\\.\\pipe\\comment_audio"; // equivalent to Unix /tmp/my-pipe.sock
+const pipePath = "\\\\.\\pipe\\comment_audio"; // equivalent to Unix /tmp/my-pipe.sock
 
-let client = null;
+let pipeClient = null;
 
-async function openClient(path) {
+async function getClient() {
+  if (pipeClient) return pipeClient;
+
   return new Promise((resolve, reject) => {
-    if (client) {
+    const client = net.connect(pipePath, () => {
+      console.log("connected");
+      client.setTimeout(0);
+      client.on("close", () => {
+        console.log("closed");
+        pipeClient = null;
+      });
+      pipeClient = client;
       resolve(client);
-      return;
-    }
-    client = net.connect(path, () => {
-      console.log("connect");
-      resolve(client);
+    });
+
+    client.setTimeout(100, () => {
+      console.log("to");
+      client.destroy();
+      reject(new Error("not reached"));
+    });
+
+    client.on("error", (err) => {
+      reject(err);
     });
   });
 }
@@ -41,15 +55,19 @@ function makeSendData(wave) {
 }
 
 async function foo() {
-  const d = fs.readFileSync("./n-voice-talk-10.wav");
+  const d = fs.readFileSync("./test/n-voice-talk-10.wav");
   const r = makeSendData(d);
 
-  await openClient(pipe);
- await client.write(r);
-sleep(2000);
-await client.write(r);
-console.log('end')
-//    process.exit(0)
+  for (;;) {
+    try {
+      const client = await getClient();
+      console.log('do')
+      client.write(r);
+      console.log('done')
+    } catch {}
+    await sleep(1000);
+  }
+  console.log("end");
 }
 
 foo().then();
