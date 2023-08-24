@@ -23,7 +23,7 @@ struct Header {
 	uint32_t nop;
 };
 
-void doPLay(struct comment_data *ctx, void *data)
+void doPlay(struct comment_data *ctx, void *data)
 {
 	struct Header *header = data;
 	if (header->magic != 0x2525 || header->bitRate != 16) {
@@ -41,21 +41,21 @@ void doPLay(struct comment_data *ctx, void *data)
 	osa.format = AUDIO_FORMAT_16BIT;
 	osa.samples_per_sec = rate;
 
-	uint64_t last_time = os_gettime_ns();
-	uint64_t ts = 0;
+	uint64_t ts = os_gettime_ns();
+	uint64_t shift = 10 * 1000000; // shift 10ms
+	uint32_t size = rate / 10;     // 100ms
 
-	for (uint32_t p = 0; p < frames; p += rate) {
-		uint32_t f = min(frames - p, rate);
+	for (uint32_t p = 0; p < frames; p += size) {
+		uint32_t f = min(frames - p, size);
 		osa.data[0] = rawData + p * bpf;
 		osa.frames = f;
 		osa.timestamp = ts;
 		obs_source_output_audio(ctx->source, &osa); // limit 1 second
-		uint64_t duration = 1000000000 / rate * f;
-		ts += duration;
-		blog(LOG_INFO,
-		     "comment_audio rate:%d frames:%d duration:%d position:%d",
-		     rate, f, duration, p);
-		os_sleepto_ns(last_time + ts); // need to wait
+		ts += 1000000000 / rate * f;
+		// blog(LOG_INFO,
+		//      "comment_audio rate:%d frames:%d position:%d ts:%llu",
+		//		     rate, f, p, ts);
+		os_sleepto_ns(ts - shift); //  need to wait
 	}
 }
 
@@ -102,7 +102,7 @@ static void *comment_thread(void *pdata)
 		while (os_event_try(ctx->event) == EAGAIN) {
 			os_sleep_ms(10);
 			DWORD len = pos ? size - pos : sizeof(header);
-			uint8_t *p = pos ? buf + pos : (uint8_t*)&header;
+			uint8_t *p = pos ? buf + pos : (uint8_t *)&header;
 			dwRead = 0;
 			ReadFile(hPipe, p, len, &dwRead, NULL);
 			DWORD ret = GetLastError();
@@ -137,7 +137,7 @@ static void *comment_thread(void *pdata)
 			if (pos < size)
 				continue;
 
-			doPLay(ctx, buf);
+			doPlay(ctx, buf);
 			bfree(buf);
 			buf = NULL;
 			pos = size = 0;
